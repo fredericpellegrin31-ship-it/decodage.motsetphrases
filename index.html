@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Le Maître de l'Oral</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Quicksand:wght@400;700&display=swap');
+        body { font-family: 'Quicksand', sans-serif; background: #e0f2fe; }
+        .font-game { font-family: 'Fredoka', sans-serif; }
+        .game-card { background: white; border-radius: 2rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+        .mic-anim { animation: pulse 1.5s infinite; }
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .modal { background: rgba(0,0,0,0.5); display: none; position: fixed; inset: 0; align-items: center; justify-content: center; z-index: 50; }
+        .modal.active { display: flex; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div id="main-container" class="w-full max-w-md game-card p-8 border-b-8 border-blue-200">
+        
+        <!-- ACCUEIL -->
+        <div id="view-home" class="text-center">
+            <h1 class="text-4xl text-blue-600 mb-4 font-game">Le Maître de l'Oral</h1>
+            <p class="text-gray-500 mb-10 text-lg font-medium">Prêt à bien prononcer ?</p>
+            <button onclick="changeView('view-levels')" class="bg-blue-500 hover:bg-blue-600 text-white text-2xl py-4 px-12 rounded-2xl shadow-lg transition transform active:scale-95 font-game">
+                PLAY
+            </button>
+        </div>
+
+        <!-- NIVEAUX -->
+        <div id="view-levels" class="hidden text-center">
+            <h2 class="text-2xl text-blue-600 mb-6 font-game font-semibold">Choisis ton défi</h2>
+            <div class="grid gap-6">
+                <!-- Niveau 1 -->
+                <div class="flex flex-col gap-2">
+                    <button onclick="initGame(1)" class="p-4 bg-green-100 text-green-700 rounded-2xl border-2 border-green-200 font-bold hover:bg-green-200 transition">Jouer : Niveau 1 (Mots)</button>
+                    <button onclick="openEditor(1)" class="text-xs text-green-600 underline">Ma liste de mots</button>
+                </div>
+                <!-- Niveau 2 -->
+                <div class="flex flex-col gap-2">
+                    <button onclick="initGame(2)" class="p-4 bg-yellow-100 text-yellow-700 rounded-2xl border-2 border-yellow-200 font-bold hover:bg-yellow-200 transition">Jouer : Niveau 2 (Groupes)</button>
+                    <button onclick="openEditor(2)" class="text-xs text-yellow-600 underline">Ma liste de groupes</button>
+                </div>
+                <!-- Niveau 3 -->
+                <div class="flex flex-col gap-2">
+                    <button onclick="initGame(3)" class="p-4 bg-purple-100 text-purple-700 rounded-2xl border-2 border-purple-200 font-bold hover:bg-purple-200 transition">Jouer : Niveau 3 (Phrases)</button>
+                    <button onclick="openEditor(3)" class="text-xs text-purple-600 underline">Ma liste de phrases</button>
+                </div>
+            </div>
+            <button onclick="changeView('view-home')" class="mt-8 text-gray-400">Retour</button>
+        </div>
+
+        <!-- JEU -->
+        <div id="view-game" class="hidden">
+            <div class="flex justify-between items-center mb-6">
+                <span id="label-lvl" class="bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-bold"></span>
+                <span id="label-prog" class="text-blue-500 font-bold"></span>
+            </div>
+            
+            <div class="bg-gray-50 p-6 rounded-3xl border-2 border-dashed border-blue-200 text-center mb-10">
+                <p class="text-gray-400 text-xs uppercase mb-2 font-bold tracking-widest">Dis à voix haute :</p>
+                <div id="text-target" class="text-2xl text-gray-800 font-bold leading-tight min-h-[4rem] flex items-center justify-center"></div>
+            </div>
+
+            <div class="flex flex-col items-center gap-4">
+                <button id="btn-mic" onclick="handleMicInteraction()" class="w-24 h-24 bg-blue-500 text-white rounded-full flex items-center justify-center shadow-xl transition-all outline-none focus:ring-4 focus:ring-blue-200">
+                    <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-20a3 3 0 00-3 3v10a3 3 0 006 0V3a3 3 0 00-3-3z" />
+                    </svg>
+                </button>
+                <p id="mic-status" class="text-blue-500 font-bold uppercase text-xs tracking-tighter">Appuie pour parler</p>
+                <div id="feedback" class="h-12 font-bold text-center flex items-center justify-center px-2"></div>
+            </div>
+        </div>
+
+        <!-- FIN -->
+        <div id="view-win" class="hidden text-center">
+            <div class="text-6xl mb-4">🏆</div>
+            <h2 class="text-3xl text-blue-600 mb-4 font-game">Bravo !</h2>
+            <p id="score-text" class="text-gray-500 mb-8 font-medium"></p>
+            <button onclick="changeView('view-levels')" class="bg-blue-500 text-white py-3 px-10 rounded-xl font-bold font-game shadow-md">Retour aux niveaux</button>
+        </div>
+    </div>
+
+    <!-- MODAL ÉDITEUR -->
+    <div id="modal-editor" class="modal">
+        <div class="bg-white w-11/12 max-w-lg p-6 rounded-3xl shadow-2xl max-h-[80vh] flex flex-col">
+            <h3 id="editor-title" class="text-xl font-bold text-blue-600 mb-4 font-game">Modifier la liste</h3>
+            <p class="text-xs text-gray-400 mb-4 italic">Séparez chaque élément par une nouvelle ligne.</p>
+            <textarea id="editor-textarea" class="w-full flex-1 border-2 border-gray-100 rounded-xl p-3 focus:border-blue-300 outline-none font-sans text-sm"></textarea>
+            <div class="mt-6 flex gap-2">
+                <button onclick="closeEditor()" class="flex-1 bg-gray-100 py-3 rounded-xl font-bold">Annuler</button>
+                <button onclick="saveList()" class="flex-1 bg-blue-500 text-white py-3 rounded-xl font-bold">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Listes par défaut
+        let lists = {
+            1: ["Chien", "Banane", "Étoile", "Maison", "Livre", "Arbre", "Pomme", "Soleil", "Fleur", "Ballon", "Hibou", "Gâteau"],
+            2: ["Un petit chat", "La grande table", "Une fleur rose", "Le ciel bleu", "Mon sac noir", "Une pomme rouge", "Ton beau vélo", "Le gros chien", "Ma main gauche", "Une petite souris", "Le vent souffle", "Un bon repas"],
+            3: ["Le chat dort sur le canapé.", "Je mange une pomme rouge.", "Il fait très beau dehors.", "Le soleil brille dans le ciel.", "J'aime faire du vélo.", "Maman prépare un bon gâteau.", "Le petit oiseau chante.", "La table est dans la cuisine.", "Je joue avec mes amis.", "La fleur est très jolie.", "L'école est finie aujourd'hui.", "Le livre est très intéressant."]
+        };
+
+        let currentLvl = 1;
+        let index = 0;
+        let score = 0;
+        let recognition = null;
+        let active = false;
+        let finalTranscript = "";
+        let editingLevel = null;
+
+        // Init Speech Recognition
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRec();
+            recognition.lang = 'fr-FR';
+            recognition.continuous = true; // Permet de continuer jusqu'à l'appui manuel
+            recognition.interimResults = true;
+
+            recognition.onstart = () => { 
+                active = true; 
+                finalTranscript = "";
+                updateMicUI(); 
+            };
+            
+            recognition.onresult = (e) => {
+                let interimTranscript = "";
+                for (let i = e.resultIndex; i < e.results.length; ++i) {
+                    if (e.results[i].isFinal) {
+                        finalTranscript += e.results[i][0].transcript;
+                    } else {
+                        interimTranscript += e.results[i][0].transcript;
+                    }
+                }
+                // Optionnel : afficher le retour visuel en temps réel
+                // document.getElementById('feedback').innerText = finalTranscript + interimTranscript;
+            };
+
+            recognition.onend = () => { 
+                active = false; 
+                updateMicUI();
+                // On valide seulement quand le micro s'arrête via handleMicInteraction
+            };
+
+            recognition.onerror = () => {
+                active = false;
+                updateMicUI();
+            };
+        }
+
+        // Synthèse vocale
+        function speak(text, callback) {
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.lang = 'fr-FR';
+            utter.rate = 0.9;
+            utter.onend = callback;
+            window.speechSynthesis.speak(utter);
+        }
+
+        function changeView(id) {
+            ['view-home', 'view-levels', 'view-game', 'view-win'].forEach(v => {
+                document.getElementById(v).classList.add('hidden');
+            });
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function initGame(lvl) {
+            currentLvl = lvl;
+            index = 0;
+            score = 0;
+            changeView('view-game');
+            refresh();
+        }
+
+        function refresh() {
+            const currentList = lists[currentLvl];
+            document.getElementById('label-lvl').innerText = "Niveau " + currentLvl;
+            document.getElementById('label-prog').innerText = (index + 1) + " / " + currentList.length;
+            document.getElementById('text-target').innerText = currentList[index];
+            document.getElementById('feedback').innerText = "";
+            document.getElementById('btn-mic').disabled = false;
+        }
+
+        function handleMicInteraction() {
+            if (!recognition) return alert("Micro non supporté sur ce navigateur.");
+            if (window.speechSynthesis.speaking) return; 
+
+            if (!active) {
+                recognition.start();
+            } else {
+                recognition.stop();
+                // Attendre une petite fraction de seconde que le dernier résultat arrive
+                setTimeout(() => {
+                    validate(finalTranscript);
+                }, 400);
+            }
+        }
+
+        function updateMicUI() {
+            const btn = document.getElementById('btn-mic');
+            const status = document.getElementById('mic-status');
+            const icon = document.getElementById('mic-icon');
+            
+            if (active) {
+                btn.classList.add('bg-red-500', 'mic-anim');
+                status.innerText = "Appuie pour terminer l'écoute";
+                status.classList.replace('text-blue-500', 'text-red-500');
+                // Changer icône pour "Stop"
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />';
+            } else {
+                btn.classList.remove('bg-red-500', 'mic-anim');
+                status.innerText = "Appuie pour parler";
+                status.classList.replace('text-red-500', 'text-blue-500');
+                // Remettre icône Micro
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-20a3 3 0 00-3 3v10a3 3 0 006 0V3a3 3 0 00-3-3z" />';
+            }
+        }
+
+        function clean(text) {
+            return text.toLowerCase()
+                       .replace(/[.,!?;:]/g, "")
+                       .replace(/\s+/g, " ")
+                       .trim();
+        }
+
+        function validate(heard) {
+            document.getElementById('btn-mic').disabled = true;
+            const target = lists[currentLvl][index];
+            const cleanTarget = clean(target);
+            const cleanHeard = clean(heard);
+            
+            const feedback = document.getElementById('feedback');
+            
+            // Logique de validation stricte :
+            // Pour les niveaux 2 et 3, tous les mots de la cible doivent être présents dans ce qui a été entendu
+            const targetWords = cleanTarget.split(" ");
+            const isSuccess = targetWords.every(word => cleanHeard.includes(word)) && cleanHeard !== "";
+
+            if (isSuccess) {
+                score++;
+                feedback.innerText = "Parfait ! Tout est correct. ✅";
+                feedback.className = "h-12 font-bold text-center text-green-500";
+                
+                confetti({
+                    particleCount: 150,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                    colors: ['#3b82f6', '#10b981', '#f59e0b']
+                });
+            } else {
+                feedback.innerText = heard === "" ? "Je n'ai pas entendu... ❌" : "Incomplet ou incorrect. ❌";
+                feedback.className = "h-12 font-bold text-center text-orange-500";
+            }
+
+            // Attendre un peu puis lire la phrase
+            setTimeout(() => {
+                speak(target, () => {
+                    setTimeout(() => {
+                        index++;
+                        if (index < lists[currentLvl].length) {
+                            refresh();
+                        } else {
+                            document.getElementById('score-text').innerText = "Score : " + score + " / " + lists[currentLvl].length;
+                            changeView('view-win');
+                        }
+                    }, 800);
+                });
+            }, 1000);
+        }
+
+        // Gestion de l'éditeur
+        function openEditor(lvl) {
+            editingLevel = lvl;
+            const titles = ["des mots", "des groupes de mots", "des phrases"];
+            document.getElementById('editor-title').innerText = "Ma liste " + titles[lvl-1];
+            document.getElementById('editor-textarea').value = lists[lvl].join("\n");
+            document.getElementById('modal-editor').classList.add('active');
+        }
+
+        function closeEditor() {
+            document.getElementById('modal-editor').classList.remove('active');
+            editingLevel = null;
+        }
+
+        function saveList() {
+            const val = document.getElementById('editor-textarea').value;
+            const newList = val.split("\n").map(s => s.trim()).filter(s => s.length > 0);
+            if (newList.length === 0) return alert("La liste ne peut pas être vide.");
+            
+            lists[editingLevel] = newList;
+            closeEditor();
+        }
+    </script>
+</body>
+</html>
